@@ -8,11 +8,11 @@ import requests
 import stepn_password
 import json
 
+
 with open(os.path.join(os.path.dirname(__file__), 'config.yaml'), 'r') as config_file:
     config = yaml.load(config_file, Loader=Loader)
     acc = config.get('StepnAccount')
     secret = config.get('GoogleSecret')
-
 
 
 class StepnActions:
@@ -52,7 +52,7 @@ class StepnActions:
 
         return result_values
 
-    def get_shoe_list(self,chain: int):
+    def get_shoe_list(self, chain: int):
         URL = 'https://api.stepn.com/run/shoelist?sessionID='
         if chain not in [101, 103, 104]:
             raise ValueError("chain must be one of 101, 103, 104")
@@ -69,24 +69,22 @@ class StepnActions:
                 sneaker_data['otd'] = i['otd']
                 sneaker_data['level'] = i['level']
                 sneaker_data['breed'] = i['breed']
-                sneaker_data['shoeImg'] = 'https://res.stepn.com/imgOut/'+i['shoeImg']
+                sneaker_data['shoeImg'] = 'https://res.stepn.com/imgOut/' + i['shoeImg']
                 attrs = i['attr']
                 totalAttrs = i['totalAttr']
                 sneaker_data['attrs'] = {
-                    'baseEfficiency' : float(attrs[0])/10,
-                    'baseLuck' : float(attrs[1])/10,
-                    'baseComfort' : float(attrs[2])/10,
-                    'baseResilience' : float(attrs[3])/10,
-                    'Efficiency' : float(totalAttrs[0])/10,
-                    'Luck' : float(totalAttrs[1])/10,
-                    'Comfort' : float(totalAttrs[2])/10,
-                    'Resilience' : float(totalAttrs[3])/10
+                    'baseEfficiency': float(attrs[0]) / 10,
+                    'baseLuck': float(attrs[1]) / 10,
+                    'baseComfort': float(attrs[2]) / 10,
+                    'baseResilience': float(attrs[3]) / 10,
+                    'Efficiency': float(totalAttrs[0]) / 10,
+                    'Luck': float(totalAttrs[1]) / 10,
+                    'Comfort': float(totalAttrs[2]) / 10,
+                    'Resilience': float(totalAttrs[3]) / 10
                 }
                 sneakers.append(sneaker_data)
 
         return sneakers
-
-
 
     def log_in(self) -> str:
         hashed_password = stepn_password.hash_password(acc['login'], acc['password'])
@@ -99,6 +97,34 @@ class StepnActions:
 
         return sessionID
 
+    def buy_sneaker(self, orderID: str, price: str):
+        sneaker_buy_url = f"https://api.stepn.com/run/buyprop?orderID={orderID}&price={price}&googleCode=&sessionID={self.sessionID}&"
+        sneaker_data = requests.get(sneaker_buy_url).content
+        print(repr(sneaker_data))
+
+        return json.loads(sneaker_data)
+
+    def get_order_inf(self, orderID: str):
+        order_inf_url = f"https://api.stepn.com/run/orderdata?orderId={orderID}&sessionID="
+        content = requests.get(order_inf_url+self.sessionID).content
+        content = json.loads(content)['data']
+
+        sneaker_data = {}
+        sneaker_data['otd'] = content['otd']
+        sneaker_data['level'] = content['level']
+        sneaker_data['breed'] = content['breed']
+        sneaker_data['shoeImg'] = 'https://res.stepn.com/imgOut/' + content['shoeImg']
+        attrs = content['attrs']
+        sneaker_data['attrs'] = {
+            'baseEfficiency': float(attrs[0]) / 10,
+            'baseLuck': float(attrs[1]) / 10,
+            'baseComfort': float(attrs[2]) / 10,
+            'baseResilience': float(attrs[3]) / 10 }
+
+        return sneaker_data
+
+
+
     @property
     def google_code(self) -> str:
         key = base64.b32decode(secret, True)
@@ -110,8 +136,3 @@ class StepnActions:
         code = int.from_bytes(code, "big") & 0x7FFFFFFF
         code = code % 1000000
         return "{:06d}".format(code)
-
-
-actions = StepnActions()
-print(actions.get_shoe_list(103))
-print(actions.get_acc_inf(103))

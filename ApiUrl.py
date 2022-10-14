@@ -92,4 +92,4 @@ class ApiUrl():
 
     @property
     def result_url(self):
-        return f'https://api.stepn.com/run/orderlist?order=2001&chain={self.chain}&refresh=true&page=0&otd={self.otd}&type={self.type}&gType={self.gtype}&quality={self.quality}&level={self.level}&bread={self.bread}'
+        return f'https://api.stepn.com/run/orderlist?order=2001&chain={self.chain}&refresh=false&page=0&otd={self.otd}&type={self.type}&gType={self.gtype}&quality={self.quality}&level={self.level}&bread={self.bread}'

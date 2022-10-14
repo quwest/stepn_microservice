@@ -1,6 +1,5 @@
 import json
 import os
-
 import mysql.connector
 import yaml
 from yaml import CLoader as Loader
@@ -17,11 +16,19 @@ class DB():
         self.cursor.execute(
             'SELECT filters FROM projects WHERE id=%s', (id,)
         )
-        data = self.cursor.fetchall()
+        data = self.cursor.fetchone()
         self.cnx.commit()
-        print(data[0][0])
 
-        return json.loads(data[0][0])
+        return json.loads(data[0])
+
+    def get_chain(self, id: int) -> str:
+        self.cursor.execute(
+            'SELECT chain FROM projects WHERE id=%s', (id,)
+        )
+        data = self.cursor.fetchone()
+        self.cnx.commit()
+
+        return data[0]
 
     def __del__(self):
         self.cnx.close()
