@@ -21,6 +21,17 @@ class DB():
 
         return json.loads(data[0])
 
+    def get_all_ids(self) -> list:
+        ids = []
+
+        self.cursor.execute('SELECT id FROM projects')
+        data = self.cursor.fetchall()
+        for i in data:
+            ids.append(i[0])
+        self.cnx.commit()
+
+        return ids
+
     def get_chain(self, id: int) -> str:
         self.cursor.execute(
             'SELECT chain FROM projects WHERE id=%s', (id,)
@@ -32,3 +43,4 @@ class DB():
 
     def __del__(self):
         self.cnx.close()
+

@@ -1,13 +1,15 @@
 import json
 import requests
 from DB import DB
+from Exceptions import InauthorizedAccount
+from utils import parse_lvls_from_str
 
 
 class SneakerFind:
     def __init__(self, project_id):
         self.db = DB()
         filters = self.db.get_filters(project_id)
-        chain = self.db.get_chain(project_id)
+        self.chain = self.db.get_chain(project_id)
         self.sneakers_types = ['Sneakers', 'Shoeboxes']
         self.sneakers_rarities = ['Genesis', 'OG']
         self.qualities = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary']
@@ -15,24 +17,16 @@ class SneakerFind:
         self.pages = ['Gems', 'Others']
         self.gem_types = ['Efficiency', 'Luck', 'Comfort', 'Resilience']
         self.api_url_obj = ApiUrl()
-        self.api_url_obj.set_chain(chain)
+        self.api_url_obj.set_chain(self.chain)
         self._set_filters(list(filters)[0], **filters[list(filters)[0]])
 
-    def parse_lvls_from_str(self, string: str) -> tuple[int, int]:
-        string = string.split('-')
-        lvls = []
-        for i in string:
-            lvls.append(int(i.replace(' ', '')))
-        return lvls[0], lvls[1]
-
     def _set_filters(self, section: str, **kwargs) -> None:
-
         if section == 'Sneakers':
-            type = kwargs['Type'] if 'Type' in kwargs else None
-            if type == 'Shoeboxes':
-                if type not in self.sneakers_types:
+            _type = kwargs['Type'] if 'Type' in kwargs else None
+            if _type == 'Shoeboxes':
+                if _type not in self.sneakers_types:
                     raise ValueError('Unknown type')
-                self.api_url_obj.set_all_type(type)
+                self.api_url_obj.set_all_type(_type)
 
                 quality = kwargs['Quality'] if 'Quality' in kwargs else None
                 if quality:
@@ -40,10 +34,10 @@ class SneakerFind:
                         raise ValueError('Unknown quality')
                     self.api_url_obj.set_quality(quality)
 
-            if type == 'Sneakers':
-                if type not in self.sneakers_types:
+            if _type == 'Sneakers':
+                if _type not in self.sneakers_types:
                     raise ValueError('Unknown type')
-                self.api_url_obj.set_all_type(type)
+                self.api_url_obj.set_all_type(_type)
 
                 rarity = kwargs['Rarity'] if 'Rarity' in kwargs else None
                 if rarity:
@@ -65,7 +59,7 @@ class SneakerFind:
 
                 lvl = kwargs['Level'] if 'Level' in kwargs else None
                 if lvl:
-                    lvl_min, lvl_max = self.parse_lvls_from_str(lvl)
+                    lvl_min, lvl_max = parse_lvls_from_str(lvl)
 
                     if lvl_min > 30 or lvl_min < 0 or lvl_max < 0 or lvl_max > 30:
                         raise ValueError("sneakers lvls must be between 0 and 30")
@@ -76,7 +70,7 @@ class SneakerFind:
 
                 shoe_mint = kwargs['Shoe mint'] if 'Shoe mint' in kwargs else None
                 if shoe_mint:
-                    shoe_min, shoe_max = self.parse_lvls_from_str(shoe_mint)
+                    shoe_min, shoe_max = parse_lvls_from_str(shoe_mint)
 
                     if shoe_min > 7 or shoe_min < 0 or shoe_max < 0 or shoe_max > 7:
                         raise ValueError("sneakers shoe mint must be between 0 and 7")
@@ -89,15 +83,15 @@ class SneakerFind:
                     raise ValueError(f"Invalid page: {section}")
                 self.api_url_obj.set_page(section)
 
-                type = kwargs['Type'] if 'Type' in kwargs else None
-                if type:
-                    if type not in self.gem_types:
-                        raise ValueError(f"Invalid gem type: {type}")
-                    self.api_url_obj.set_gems_type(type)
+                _type = kwargs['Type'] if 'Type' in kwargs else None
+                if _type:
+                    if _type not in self.gem_types:
+                        raise ValueError(f"Invalid gem type: {_type}")
+                    self.api_url_obj.set_gems_type(_type)
 
                 quality = kwargs['Quality'] if 'Quality' in kwargs else None
                 if quality:
-                    quality_min, quality_max = self.parse_lvls_from_str(quality)
+                    quality_min, quality_max = parse_lvls_from_str(quality)
 
                     if quality_min > 9 or quality_min < 1 or quality_max < 1 or quality_max > 9:
                         raise ValueError("sneakers lvls must be between 1 and 9")
@@ -116,28 +110,36 @@ class SneakerFind:
                         raise ValueError('Unknown quality')
                     self.api_url_obj.set_quality(quality)
 
-    @property
-    def api_url(self):
-        return self.api_url_obj.result_url
-
-    def get_sneakers_from_pages(self, sessionID):
+    def get_sneakers_from_pages(self, sessionID, pages_count=4):
         url = self.api_url + f'&sessionID={sessionID}'
-        api_content = requests.get(url).content
-        all_sneakers = json.loads(api_content)['data']
+        api_content = json.loads(requests.get(url).content)
+        code = api_content.get('code', None)
+        if code == 102001:
+            raise InauthorizedAccount
+        all_sneakers = api_content['data']
 
-        for i in range(1, 4):
+        for i in range(1, pages_count):
             api_content = requests.get(url.replace('refresh=false&page=0', f'refresh=true&page={i}')).content
-            all_sneakers.extend(json.loads(api_content)['data'])
+            api_content = json.loads(api_content)
+            code = api_content.get('code', None)
+            if code == 102001:
+                raise InauthorizedAccount
+            all_sneakers.extend(api_content['data'])
 
         return all_sneakers
 
     def find_sneakers_by_otd(self, otd, sessionID):
         for sneaker in self.get_sneakers_from_pages(sessionID):
+            print(repr(sneaker['otd']), repr(otd))
             if sneaker['otd'] == otd:
                 return sneaker['id'], sneaker['sellPrice']
 
+    @property
+    def api_url(self):
+        return self.api_url_obj.result_url
 
-class ApiUrl():
+
+class ApiUrl:
     def __init__(self):
         self.chain = ''
         self.otd = ''
@@ -232,3 +234,10 @@ class ApiUrl():
     @property
     def result_url(self):
         return f'https://api.stepn.com/run/orderlist?order=2001&chain={self.chain}&refresh=false&page=0&otd={self.otd}&type={self.type}&gType={self.gtype}&quality={self.quality}&level={self.level}&bread={self.bread}'
+
+
+
+# добавить описание установки
+
+
+
