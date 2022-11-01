@@ -74,21 +74,21 @@ class StepnActions:
 
         if chain == 101:
             result_values['eth'] = [i['value'] / 1000000 for i in asset if i['token'] == 1001]
-            result_values['eth'] = result_values['eth'][0] if result_values['eth'] else ''
+            result_values['eth'] = result_values['eth'][0] if result_values['eth'] else 0
 
         if chain == 103:
             result_values['sol'] = [i['value'] / 1000000 for i in asset if i['token'] == 1003]
-            result_values['sol'] = result_values['sol'][0] if result_values['sol'] else ''
+            result_values['sol'] = result_values['sol'][0] if result_values['sol'] else 0
 
         if chain == 104:
             result_values['bnb'] = [i['value'] / 1000000 for i in asset if i['token'] == 1004]
-            result_values['bnb'] = result_values['bnb'][0] if result_values['bnb'] else ''
+            result_values['bnb'] = result_values['bnb'][0] if result_values['bnb'] else 0
 
         result_values['gst'] = [i['value'] / 100 for i in asset if i['token'] == 3000]
-        result_values['gst'] = result_values['gst'][0] if result_values['gst'] else ''
+        result_values['gst'] = result_values['gst'][0] if result_values['gst'] else 0
 
         result_values['gmt'] = [i['value'] / 100 for i in asset if i['token'] == 3001]
-        result_values['gmt'] = result_values['gmt'][0] if result_values['gmt'] else ''
+        result_values['gmt'] = result_values['gmt'][0] if result_values['gmt'] else 0
 
         logger.info('getting acc info')
         return result_values
@@ -152,7 +152,6 @@ class StepnActions:
             return True
 
         for i in data:
-            print(repr(i['otd']),'   ', repr(otd))
             if i['otd'] == otd:
                 return False
 
@@ -171,13 +170,11 @@ class StepnActions:
             sneaker_buy_url = f"https://api.stepn.com/run/buyprop?orderID={orderID}&price={price}&googleCode=&sessionID={self.sessionID}&"
             sneaker_data = requests.get(sneaker_buy_url).content
             data = json.loads(sneaker_data)
-        print(sneaker_data)
 
         return data
 
     def get_order_inf(self, orderID: str):
         order_inf_url = f"https://api.stepn.com/run/orderdata?orderId={orderID}&sessionID="
-        print(orderID)
         api_content = requests.get(order_inf_url+self.sessionID).content
         data = json.loads(api_content)
         code = data.get('code', None)
@@ -188,7 +185,7 @@ class StepnActions:
             data = json.loads(api_content)
         if code == 212017:
             return data['msg']
-        print(data)
+
         content = data['data']
 
         sneaker_data = {}
